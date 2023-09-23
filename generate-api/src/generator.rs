@@ -261,7 +261,7 @@ fn generate_variants<W: Write>(
         /// The Free Software Foundation does not claim any copyright interest in the locale data of the
         /// GNU C Library; they believe it is not copyrightable.
         #[allow(non_camel_case_types,dead_code)]
-        #[derive(Debug, Copy, Clone, Default, PartialEq)]
+        #[derive(Copy, Clone, Default, PartialEq)]
         pub enum Locale {{
         "#,
     )?;
@@ -307,6 +307,38 @@ fn generate_variants<W: Write>(
         r#"
                     _ => Err(UnknownLocale),
                 }}
+            }}
+        }}
+
+        impl core::fmt::Display for Locale {{
+            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                f.write_str(match self {{
+        "#,
+    )?;
+    f.indent(3);
+
+    for (lang, norm, _) in langs {
+        write!(
+            f,
+            r#"
+            Locale::{norm} => {lang:?},
+            "#,
+            lang = lang,
+            norm = norm,
+        )?;
+    }
+
+    f.dedent(3);
+    write!(
+        f,
+        r#"
+                }})
+            }}
+        }}
+
+        impl core::fmt::Debug for Locale {{
+            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {{
+                core::fmt::Display::fmt(self, f)
             }}
         }}
 
