@@ -243,7 +243,10 @@ fn generate_locale<W: Write>(
     )
 }
 
-fn generate_variants<W: Write>(f: &mut CodeFormatter<W>, langs: &[(&str, &str)]) -> fmt::Result {
+fn generate_variants<W: Write>(
+    f: &mut CodeFormatter<W>,
+    langs: &[(&str, &str, String)],
+) -> fmt::Result {
     write!(
         f,
         r#"
@@ -255,14 +258,15 @@ fn generate_variants<W: Write>(f: &mut CodeFormatter<W>, langs: &[(&str, &str)])
     )?;
     f.indent(1);
 
-    for (lang, norm) in langs {
+    for (lang, norm, desc) in langs {
         write!(
             f,
             r#"
-            /// {lang}
+            /// `{lang}`: {desc}
             {norm},
             "#,
             lang = lang,
+            desc = desc,
             norm = norm,
         )?;
     }
@@ -282,7 +286,7 @@ fn generate_variants<W: Write>(f: &mut CodeFormatter<W>, langs: &[(&str, &str)])
     )?;
     f.indent(3);
 
-    for (lang, norm) in langs {
+    for (lang, norm, _) in langs {
         write!(
             f,
             r#"
@@ -310,7 +314,7 @@ fn generate_variants<W: Write>(f: &mut CodeFormatter<W>, langs: &[(&str, &str)])
     )?;
     f.indent(3);
 
-    for (_, norm) in langs {
+    for (_, norm, _) in langs {
         write!(
             f,
             r#"
@@ -363,9 +367,30 @@ impl fmt::Display for CodeGenerator {
 
         let mut sorted: Vec<_> = locales
             .iter()
-            .map(|(lang, _)| (lang.as_str(), normalized[lang].as_str()))
+            .map(|(lang, objects)| {
+                let mut desc = None;
+                if let Some(object) = objects.iter().find(|o| o.name == "LC_IDENTIFICATION") {
+                    for (key, values) in object.values.iter() {
+                        if key == "title" {
+                            if let Some(crate::Value::String(title)) = values.get(0) {
+                                let mut title = title.clone();
+                                if !title.ends_with('.') {
+                                    title.push('.');
+                                }
+                                desc = Some(title);
+                            }
+                            break;
+                        }
+                    }
+                }
+                let desc = desc.unwrap_or_else(|| match lang == "POSIX" {
+                    true => "POSIX Standard Locale.".to_string(),
+                    false => "".to_string(),
+                });
+                (lang.as_str(), normalized[lang].as_str(), desc)
+            })
             .collect();
-        sorted.sort_unstable_by_key(|(lang, _)| lang.to_string());
+        sorted.sort_unstable_by_key(|(lang, _, _)| lang.to_string());
         generate_variants(&mut f, &sorted)
     }
 }
