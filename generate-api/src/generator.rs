@@ -256,26 +256,23 @@ fn generate_variants<W: Write>(
         /// Most locale names follow the syntax `language[_territory][@modifier]`.
         /// The `@` is replaced with `_` in the `enum` variant names.
         ///
+        /// The default locale is `POSIX`.
+        ///
         /// The Free Software Foundation does not claim any copyright interest in the locale data of the
         /// GNU C Library; they believe it is not copyrightable.
         #[allow(non_camel_case_types,dead_code)]
-        #[derive(Debug, Copy, Clone, PartialEq)]
+        #[derive(Debug, Copy, Clone, Default, PartialEq)]
         pub enum Locale {{
         "#,
     )?;
     f.indent(1);
 
     for (lang, norm, desc) in langs {
-        write!(
-            f,
-            r#"
-            /// `{lang}`: {desc}
-            {norm},
-            "#,
-            lang = lang,
-            desc = desc,
-            norm = norm,
-        )?;
+        write!(f, "\n/// `{}`: {}\n", lang, desc)?;
+        if lang == &"POSIX" {
+            writeln!(f, "\n#[default]\n")?;
+        }
+        writeln!(f, "\n{},\n", norm)?;
     }
 
     f.dedent(1);
